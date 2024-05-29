@@ -2,3 +2,6 @@ pygame
 python-dotenv
 selenium
 webdriver-manager
+shutil
+psutil
+speedtest-cli

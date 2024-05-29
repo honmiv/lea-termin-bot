@@ -1,2 +1,7 @@
 .idea
 *venv*
+!./tor_expert/
+!./tor_expert/data
+./tor_expert/data*
+./tor_expert/tor/*.log.txt
+./tor_expert/tor/torrc*.txt

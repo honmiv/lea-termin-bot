@@ -1,9 +1,13 @@
 import concurrent.futures
 import os
+import shutil
+import subprocess
 import time
 from datetime import datetime
 
+import psutil
 import pygame
+# import speedtest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -16,8 +20,96 @@ mid_timeout = 90  # 90
 small_timeout = 60  # 60
 big_timeout = 120  # 120
 
-termin_found = False
 
+def setup_tor_proxy(i):
+    # Define source and target directories
+    source_dir = './tor_expert/data'
+    target_dir = f'./tor_expert/data{i}'
+
+    # Check if the target directory exists
+    if os.path.exists(target_dir):
+        # Recursively delete the target directory if it exists
+        shutil.rmtree(target_dir)
+
+    # Recursively copy the source directory to the target directory
+    shutil.copytree(source_dir, target_dir)
+
+    # Define the path for the torrc file
+    torrc_file_path = os.path.join(f'./tor_expert/tor/torrc{i}.txt')
+
+    # Create the torrc file with the specified content
+    with open(torrc_file_path, 'w') as file:
+        file.write(f'SocksPort 905{i * 2}\n' +
+                   f'ControlPort 905{i * 2 + 1}\n' +
+                   f'DataDirectory ..\data{i}\n' +
+                   # 'EntryNodes {de}\n' +
+                   # 'MiddleNodes {de}\n' +
+                   # 'ExitNodes {at},{be},{bg},{ch},{cz},{de},{dk},{ee},{es},{fi},{fr},{gb},{gr},{hr},{hu},{ie},{is},{it},{lt},{lu},{lv},{md},{mk},{nl},{no},{pl},{pt},{ro},{rs},{ru},{se},{si},{sk}\n' +
+                   # 'StrictNodes 1\n' +
+                   '#FastFirstHopPK 1\n' +
+                   '')
+
+    debug(f'tor-{i} - Copied {source_dir} to {target_dir}')
+    debug(f'tor-{i} - Created {torrc_file_path}')
+
+    # Attempt to start Tor and check speed
+    while True:
+        # Start the Tor process and wait for bootstrapping
+        process = start_tor_process(torrc_file_path)
+
+        # Perform the speed test
+        download_speed = perform_speed_test(i)
+
+        if download_speed >= 2.0:
+            print("Download speed is acceptable.")
+            break
+        else:
+            print("Download speed is below 2 Mbps. Restarting Tor process...")
+            terminate_process(process)
+
+
+def start_tor_process(torrc_file_path):
+    # Define the output file path
+    output_file_path = os.path.join(".", "tor_expert", "tor", f'tor{i}.log.txt')
+
+    # Run the tor command with the specified torrc file and capture the output
+    command = f'.\\tor_expert\\tor\\tor -f {torrc_file_path}'
+    try:
+        if os.path.exists(output_file_path):
+            os.remove(output_file_path)
+
+        with open(output_file_path, 'a') as output_file:
+            process = subprocess.Popen(command, shell=True, stdout=output_file, stderr=output_file)
+
+        debug(f'tor-{i} - Executed command: {command}')
+
+        # Monitor the log file for the specific line
+        bootstrapped_line = "Bootstrapped 100% (done): Done"
+        debug(f"tor-{i} - Waiting for Tor to complete bootstrapping...")
+
+        timeout_seconds = 120
+        start_time = time.time()  # Record the start time
+        while True:
+            with open(output_file_path, 'r') as output_file:
+                lines = output_file.readlines()
+                for line in lines:
+                    if bootstrapped_line in line:
+                        debug(f"tor-{i} - Found bootstrapped line: {line.strip()}")
+                        return process
+                if len(lines) != 0:
+                    debug(f"tor-{i} - last line is {lines[len(lines) - 1]}")
+
+            if time.time() - start_time > timeout_seconds:  # Timeout after 120 seconds (2 minutes)
+                raise TimeoutError(
+                    f"tor-{i} - Timed out ({timeout_seconds} seconds) waiting for Tor to complete bootstrapping")
+
+            time.sleep(1)  # Wait for a second before checking the file again
+
+    except subprocess.CalledProcessError as e:
+        debug(f'tor-{i} - Failed to execute command: {command}. {e}')
+
+
+termin_found = False
 
 # returns 0 if time is found
 # returns 1 if time was not found
@@ -46,6 +138,7 @@ def click_next_and_check_if_time_found(driver, tab_num):
     if termin_found:
         debug(f"{tab_num} - Termin found in another tab. exit!")
         raise PermissionError("Termin found in another tab. exit!")
+
     debug(f"{tab_num} - Trying to find appointment")
 
     next_button = WebDriverWait(driver, 5).until(
@@ -322,12 +415,58 @@ def find_appointment_with_retry(tab_num):
             driver.quit()
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+
 def debug(message):
     if os.getenv('DEBUG_ENABLED').strip().lower() == 'true':
         print(message)
 
 
+def terminate_process(process):
+    process.terminate()  # Terminate the process
+    try:
+        proc.wait(timeout=5)  # Wait for the process to terminate
+    except psutil.TimeoutExpired:
+        print(f"Process with PID {proc.info['pid']} did not terminate in time, killing it.")
+        proc.kill()  # Force kill the process if it does not terminate in time
+
+
+def perform_speed_test(i):
+    print("Performing speed test...")
+
+    # os.environ['https_proxy'] = f'socks5://127.0.0.1:905{i * 2}'
+
+    # st = speedtest.Speedtest()
+    # st.download()  # Perform download test
+    # st.upload()  # Perform upload test
+    # results = st.results.dict()  # Get results as a dictionary
+
+    # download_speed = results["download"] / 1_000_000  # Convert to Mbps
+    # upload_speed = results["upload"] / 1_000_000  # Convert to Mbps
+
+    # print(f"Download speed: {download_speed:.2f} Mbps")
+    # print(f"Upload speed: {upload_speed:.2f} Mbps")
+
+    return 100
+
+
 if __name__ == "__main__":
+
+    if os.getenv('USE_TOR').strip().lower() == "true":
+        while True:
+            try:
+                # Check for existing tor processes and terminate them
+                for proc in psutil.process_iter(['pid', 'name']):
+                    if proc.info['name'] == 'tor.exe' or proc.info[
+                        'name'] == 'tor':  # Check for both Windows and Unix-like systems
+                        print(f"Terminating existing tor process with PID: {proc.info['pid']}")
+                        terminate_process(proc)
+                for i in range(int(os.getenv('NUMBER_OF_TABS')) - 1):
+                    setup_tor_proxy(i)
+                break
+            except Exception as e:
+                debug(f"cannot start tor, restarting: {e}")
+                continue
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=int(os.getenv('NUMBER_OF_TABS'))) as executor:
         for i in range(int(os.getenv('NUMBER_OF_TABS'))):
             executor.submit(find_appointment_with_retry, i)
