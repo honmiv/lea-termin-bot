@@ -1,6 +1,12 @@
-1. fill in `.env` file with needed options (get examples from [website](https://otv.verwalt-berlin.de/ams/TerminBuchen?lang=en))
-2. `pip install -r ./requirements.txt`
 #### windows:
-3. `python main.py`
+1. fill in `.env` file with needed options (get examples from [website](https://otv.verwalt-berlin.de/ams/TerminBuchen?lang=en))
+2. `python -m venv venv`
+3. `.\venv\bin\activate`
+4. `pip install -r .\requirements.txt`
+5. `python main.py`
 #### linux\mac os:
-3. `python3 main.py`
+1. fill in `.env` file with needed options (get examples from [website](https://otv.verwalt-berlin.de/ams/TerminBuchen?lang=en))
+2. `python3 -m venv venv`
+3. `source ./venv/bin/activate`
+3. `pip install -r ./requirements.txt`
+4. `python3 main.py`
