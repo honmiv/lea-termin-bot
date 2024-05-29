@@ -304,8 +304,6 @@ def find_appointment_with_retry(tab_num):
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     options.set_capability("unhandledPromptBehavior", "accept")
-    if os.getenv('USE_TOR').strip().lower() == "true" and tab_num != int(os.getenv("NUMBER_OF_TABS")) - 1:
-        options.add_argument(f"--proxy-server=socks5://127.0.0.1:905{i * 2}")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
