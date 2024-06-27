@@ -176,9 +176,10 @@ def find_appointment(driver, tab_num):
         )
         for div_element in div_elements:
             label_element = div_element.find_element(By.TAG_NAME, "label")
+            input_element = div_element.find_element(By.TAG_NAME, "input")
             label_text = label_element.text.strip()
             if label_text == os.getenv('VISA_TYPE'):
-                div_element.click()
+                input_element.click()
                 debug(f"{tab_num} - {os.getenv('VISA_TYPE')} chosen")
                 break
 
@@ -330,4 +331,5 @@ def debug(message):
 if __name__ == "__main__":
     with concurrent.futures.ThreadPoolExecutor(max_workers=int(os.getenv('NUMBER_OF_TABS'))) as executor:
         for i in range(int(os.getenv('NUMBER_OF_TABS'))):
+            time.sleep(5)
             executor.submit(find_appointment_with_retry, i)
