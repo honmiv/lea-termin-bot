@@ -300,9 +300,12 @@ def find_appointment(driver, tab_num):
             driver.set_window_position(-2000, 150)
         driver.maximize_window()
 
-        pygame.mixer.init()
-        pygame.mixer.music.load(os.path.join(os.getcwd(), "alarm.wav"))
-        pygame.mixer.music.play()
+        try:
+            pygame.mixer.init()
+            pygame.mixer.music.load(os.path.join(os.getcwd(), "alarm.wav"))
+            pygame.mixer.music.play()
+        except Exception as e:
+            debug(f"{tab_num} - failed to play alarm: {e}")
 
         # get all possible dates and click next possible date until there is datetime in select
         try:
@@ -350,7 +353,6 @@ def find_appointment(driver, tab_num):
 
         except Exception as e:
             debug(f"{tab_num} - failed to find date with time {e}")
-            pass
 
         try:
             debug(f"{tab_num} - searching checkbox_iframe")
@@ -398,6 +400,7 @@ def find_appointment_with_retry(tab_num):
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     options.set_capability("unhandledPromptBehavior", "accept")
+    options.add_argument('--start-minimized')
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
