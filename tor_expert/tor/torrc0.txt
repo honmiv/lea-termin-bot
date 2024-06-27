@@ -1,4 +1,0 @@
-SocksPort 9050
-ControlPort 9051
-DataDirectory ..\data0
-#FastFirstHopPK 1
